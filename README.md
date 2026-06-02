@@ -1,78 +1,95 @@
 # Inventory & Order Management System
 
-Full-stack inventory and order management application with React, FastAPI, PostgreSQL, Docker, and Docker Compose.
+A full-stack web app for managing products, customers, inventory, and orders.
+
+## Tech Stack
+
+- Frontend: React, Vite, lucide-react
+- Backend: FastAPI, SQLAlchemy, Pydantic
+- Database: PostgreSQL
+- Local setup: Docker Compose
+- Deployment config: Render for backend, Vercel for frontend
 
 ## Features
 
-- Product CRUD with unique SKU validation and non-negative stock checks
+- Product CRUD with SKU validation and stock tracking
 - Customer create/list/detail/delete with unique email validation
-- Order create/list/detail/delete with automatic total calculation
-- Inventory reduction when orders are created
-- Insufficient-stock protection
-- Dashboard totals for products, customers, orders, and low-stock products
-- Responsive React UI with success and error messaging
+- Order creation with automatic total calculation
+- Inventory reduction when orders are placed
+- Inventory restoration when orders are deleted
+- Low-stock dashboard summary
+- Search, filters, detail drawers, and responsive UI
 
-## Local Docker Setup
+## Project Structure
 
-1. Copy environment defaults:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Update `.env`, especially `POSTGRES_PASSWORD`.
-
-3. Start the stack:
-
-   ```bash
-   docker compose up --build
-   ```
-
-4. Open:
-
-   - Frontend: `http://localhost:8080`
-   - Backend API docs: `http://localhost:8000/docs`
-
-If `docker` is not found on macOS, start Docker Desktop and run:
-
-```bash
-/Applications/Docker.app/Contents/Resources/bin/docker compose up --build
+```text
+backend/    FastAPI API, database models, schemas
+frontend/   React/Vite application
+docker-compose.yml
+render.yaml
+.env.example
 ```
 
-## Start Frontend and Backend
+## Environment
 
-### With Docker Compose
+Copy the example file before running locally:
 
-Start all services together:
+```bash
+cp .env.example .env
+```
+
+Important variables:
+
+```text
+POSTGRES_DB=inventory_db
+POSTGRES_USER=inventory
+POSTGRES_PASSWORD=123@123
+POSTGRES_PORT=5432
+BACKEND_PORT=8000
+FRONTEND_PORT=8080
+CORS_ORIGINS=http://localhost:5173,http://localhost:8080
+VITE_API_URL=http://localhost:8000
+```
+
+Change `POSTGRES_PASSWORD` for anything beyond local development.
+
+## Run with Docker
 
 ```bash
 docker compose up --build
 ```
 
-This starts:
+Open:
 
-- Frontend: `http://localhost:8080`
-- Backend API: `http://localhost:8000`
-- Backend API docs: `http://localhost:8000/docs`
-- PostgreSQL: `localhost:5432`
+- Frontend: http://localhost:8080
+- API docs: http://localhost:8000/docs
+- Health check: http://localhost:8000/health
 
-Stop the stack:
+Stop services:
 
 ```bash
 docker compose down
 ```
 
-### Without Docker
+Remove local database data:
 
-Run PostgreSQL first and make sure `DATABASE_URL` points to it. For local development, use:
+```bash
+docker compose down -v
+```
+
+## Run Without Docker
+
+Start PostgreSQL first, then run the backend:
 
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r backend/requirements.txt
-DATABASE_URL=postgresql+psycopg2://inventory:inventory_password@localhost:5432/inventory_db .venv/bin/uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
+DATABASE_URL=postgresql+psycopg2://inventory:inventory_password@localhost:5432/inventory_db \
+  CORS_ORIGINS=http://localhost:5173 \
+  .venv/bin/uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-In a second terminal, start the frontend:
+Run the frontend in another terminal:
 
 ```bash
 cd frontend
@@ -80,33 +97,37 @@ npm install
 VITE_API_URL=http://localhost:8000 npm run dev
 ```
 
-The Vite frontend will usually run at `http://localhost:5173`.
+Vite usually starts at http://localhost:5173.
 
-## API
+## API Routes
 
-Products:
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | API health check |
+| `GET` | `/dashboard` | Dashboard totals |
+| `POST` | `/products` | Create product |
+| `GET` | `/products` | List products |
+| `GET` | `/products/{id}` | Get product |
+| `PUT` | `/products/{id}` | Update product |
+| `DELETE` | `/products/{id}` | Delete product |
+| `POST` | `/customers` | Create customer |
+| `GET` | `/customers` | List customers |
+| `GET` | `/customers/{id}` | Get customer |
+| `DELETE` | `/customers/{id}` | Delete customer |
+| `POST` | `/orders` | Create order |
+| `GET` | `/orders` | List orders |
+| `GET` | `/orders/{id}` | Get order |
+| `DELETE` | `/orders/{id}` | Delete order |
 
-- `POST /products`
-- `GET /products`
-- `GET /products/{id}`
-- `PUT /products/{id}`
-- `DELETE /products/{id}`
+## Deployment
 
-Customers:
+Backend:
 
-- `POST /customers`
-- `GET /customers`
-- `GET /customers/{id}`
-- `DELETE /customers/{id}`
+- Uses `render.yaml`
+- Set `DATABASE_URL`
+- Set `CORS_ORIGINS` to the frontend domain
 
-Orders:
+Frontend:
 
-- `POST /orders`
-- `GET /orders`
-- `GET /orders/{id}`
-- `DELETE /orders/{id}`
-
-Dashboard:
-
-- `GET /dashboard`
-
+- Uses `frontend/vercel.json`
+- Set `VITE_API_URL` to the deployed backend URL
