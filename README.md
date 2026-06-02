@@ -110,28 +110,3 @@ Dashboard:
 
 - `GET /dashboard`
 
-## Deployment
-
-This repository is ready for free-tier deployment, but the actual deployment must be completed from your Render/Railway/Fly.io and Vercel/Netlify accounts.
-
-### Backend on Render
-
-1. Create a PostgreSQL database on Render and copy its internal database URL.
-2. Create a new Web Service from this repository.
-3. Set root directory to `backend`.
-4. Use Docker deployment.
-5. Add environment variables:
-   - `DATABASE_URL`: Render PostgreSQL internal URL, using the `postgresql+psycopg2://` scheme
-   - `CORS_ORIGINS`: your deployed frontend URL, for example `https://your-app.vercel.app`
-6. Deploy and confirm `https://your-backend.onrender.com/health` returns `{"status":"ok"}`.
-
-### Frontend on Vercel
-
-1. Import this repository in Vercel.
-2. Set root directory to `frontend`.
-3. Add environment variable:
-   - `VITE_API_URL`: your deployed backend URL, for example `https://your-backend.onrender.com`
-4. Deploy.
-5. After the frontend URL is created, add it to backend `CORS_ORIGINS` and redeploy the backend.
-
-Netlify can also host the frontend with the same root directory and `VITE_API_URL` environment variable.
