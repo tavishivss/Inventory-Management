@@ -1022,6 +1022,19 @@ tbody tr td:last-child {
   margin-top: 6px;
 }
 
+.order-drawer-head .eyebrow {
+  font-size: 0.9rem;
+}
+
+.order-drawer-head h2 {
+  font-size: 1.15rem;
+}
+
+.order-drawer-head span {
+  font-size: 1rem;
+  margin-top: 14px;
+}
+
 .detail-row {
   align-items: center;
   background: var(--color-soft);
@@ -1084,20 +1097,6 @@ tbody tr td:last-child {
   margin-top: 24px;
 }
 
-.support-layout {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.clean-list {
-  color: #475467;
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding-left: 18px;
-}
-
 .mobile-menu {
   display: none;
 }
@@ -1108,8 +1107,7 @@ tbody tr td:last-child {
   }
 
   .dashboard-grid,
-  .page-grid,
-  .support-layout {
+  .page-grid {
     grid-template-columns: 1fr;
   }
 

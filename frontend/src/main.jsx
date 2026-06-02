@@ -7,9 +7,7 @@ import {
   Boxes,
   CheckCircle2,
   ClipboardList,
-  Download,
   Eye,
-  Headphones,
   LayoutDashboard,
   Menu,
   MoreHorizontal,
@@ -20,9 +18,7 @@ import {
   Save,
   Search,
   ShoppingCart,
-  SlidersHorizontal,
   Trash2,
-  Upload,
   Users,
   X,
 } from 'lucide-react';
@@ -32,11 +28,27 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'products', label: 'Products', icon: Boxes },
+  { id: 'products', label: 'Products', icon: ProductStackIcon },
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'orders', label: 'Orders', icon: ShoppingCart },
-  { id: 'support', label: 'Settings', icon: SlidersHorizontal },
 ];
+
+function ProductStackIcon({ size = 18, ...props }) {
+  return (
+    <svg
+      aria-hidden="true"
+      height={size}
+      viewBox="0 0 24 24"
+      width={size}
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <rect height="4" rx="1" fill="currentColor" width="16" x="4" y="5" />
+      <rect height="4" rx="1" fill="currentColor" width="16" x="4" y="10" />
+      <rect height="4" rx="1" fill="currentColor" width="16" x="4" y="15" />
+    </svg>
+  );
+}
 
 const emptyProductForm = { name: '', sku: '', price: '', quantity_in_stock: '' };
 const emptyCustomerForm = { full_name: '', email: '', phone: '' };
@@ -432,8 +444,6 @@ function App() {
                   onToggleOrder={toggleOrderSelection}
                 />
               )}
-
-              {activePage === 'support' && <SupportPage apiUrl={API_URL} />}
             </>
           )}
         </main>
@@ -471,7 +481,6 @@ function Sidebar({ activePage, open, onClose, onNavigate }) {
           </div>
           <div>
             <strong>Invora</strong>
-            <span>Inventory OS</span>
           </div>
         </div>
 
@@ -546,7 +555,7 @@ function DashboardPage({ customers, inventoryValue, lowStock, orderedUnits, orde
   return (
     <div className="page-stack">
       <section className="metrics-grid">
-        <Metric icon={Boxes} label="Products" value={summary?.total_products ?? products.length} helper="Active SKUs" />
+        <Metric icon={ProductStackIcon} label="Products" value={summary?.total_products ?? products.length} helper="Active SKUs" />
         <Metric icon={Users} label="Customers" value={summary?.total_customers ?? customers.length} helper="Buyer records" />
         <Metric icon={ClipboardList} label="Orders" value={summary?.total_orders ?? orders.length} helper={money(revenue)} />
         <Metric icon={AlertCircle} label="Low Stock" value={summary?.low_stock_products ?? lowStock.length} helper="Need attention" tone="warning" />
@@ -809,29 +818,6 @@ function OrdersPage({
   );
 }
 
-function SupportPage({ apiUrl }) {
-  return (
-    <div className="support-layout">
-      <Panel title="Frontend Structure">
-        <ul className="clean-list">
-          <li><strong>Layout:</strong> dark sidebar, sticky topbar, responsive content panels.</li>
-          <li><strong>Pages:</strong> Dashboard, Products, Customers, Orders, and Settings.</li>
-          <li><strong>Components:</strong> metric cards, forms, tables, badges, search, filters, and detail drawer.</li>
-          <li><strong>Styling:</strong> plain CSS with design tokens in `styles.css`; Tailwind or shadcn/ui can be added later if the project grows.</li>
-        </ul>
-      </Panel>
-      <Panel title="Integration Notes">
-        <ul className="clean-list">
-          <li><strong>API base:</strong> {apiUrl || 'Missing VITE_API_URL'}</li>
-          <li><strong>Products:</strong> create, list, update, and delete use the existing backend routes.</li>
-          <li><strong>Customers:</strong> create, list, and delete are wired. Customer editing needs a backend update route.</li>
-          <li><strong>Orders:</strong> create, list, view, and delete are wired. Order deletion restores stock in the backend.</li>
-        </ul>
-      </Panel>
-    </div>
-  );
-}
-
 function ProductForm({ editing, form, onCancel, onChange, onSubmit }) {
   return (
     <form className="form-stack" onSubmit={onSubmit}>
@@ -1089,7 +1075,7 @@ function DetailDrawer({ drawer, onClose, onDelete, onEditProduct }) {
     <>
       <button className="drawer-scrim" aria-label="Close details" onClick={onClose} type="button" />
       <aside className="drawer">
-        <div className="drawer-head">
+        <div className={`drawer-head ${type === 'order' ? 'order-drawer-head' : ''}`}>
           <div>
             <p className="eyebrow">{type} details</p>
             <h2>{title}</h2>
