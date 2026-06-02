@@ -70,7 +70,10 @@ async function request(path, options = {}) {
 }
 
 function money(value) {
-  return Number(value || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+  return `$${Number(value || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 function stockState(product) {
