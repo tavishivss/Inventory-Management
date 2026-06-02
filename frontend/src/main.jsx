@@ -94,6 +94,10 @@ function initials(name = '') {
     .toUpperCase() || 'IN';
 }
 
+function orderItemQuantity(order) {
+  return order.items.reduce((total, item) => total + Number(item.quantity), 0);
+}
+
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -165,7 +169,7 @@ function App() {
       const matchesFilter =
         orderFilter === 'all' ||
         (orderFilter === 'large' && Number(order.total_amount) >= 500) ||
-        (orderFilter === 'single' && order.items.length === 1);
+        (orderFilter === 'single' && orderItemQuantity(order) === 1);
       return matchesTerm && matchesFilter;
     });
   }, [orders, orderFilter, query]);
@@ -484,14 +488,6 @@ function Sidebar({ activePage, open, onClose, onNavigate }) {
             );
           })}
         </nav>
-
-        <div className="sidebar-card">
-          <Headphones size={18} />
-          <div>
-            <strong>Support</strong>
-            <span>Use Settings for API and workflow notes.</span>
-          </div>
-        </div>
       </aside>
       {open && <button className="scrim" aria-label="Close navigation" onClick={onClose} type="button" />}
     </>
@@ -505,18 +501,9 @@ function Topbar({ pageTitle, loading, onMenu, onRefresh }) {
         <Menu size={20} />
       </button>
       <div>
-        <p className="eyebrow">Operations</p>
         <h1>{pageTitle}</h1>
       </div>
       <div className="topbar-actions">
-        <button className="secondary-button" type="button">
-          <Download size={17} />
-          Import
-        </button>
-        <button className="secondary-button" type="button">
-          <Upload size={17} />
-          Export
-        </button>
       </div>
       <button className="secondary-button" onClick={onRefresh} disabled={loading} type="button">
         <RefreshCw size={17} />
@@ -790,9 +777,14 @@ function OrdersPage({
         action={
           <div className="table-tools">
             {selectedVisibleIds.length > 0 && (
-              <button className="danger-button" onClick={() => onRemoveSelected(selectedVisibleIds)} type="button">
+              <button
+                className="icon-button danger"
+                onClick={() => onRemoveSelected(selectedVisibleIds)}
+                title={`Delete selected (${selectedVisibleIds.length})`}
+                type="button"
+                aria-label={`Delete selected ${selectedVisibleIds.length} order${selectedVisibleIds.length === 1 ? '' : 's'}`}
+              >
                 <Trash2 size={16} />
-                Delete selected ({selectedVisibleIds.length})
               </button>
             )}
             <SegmentedControl value={filter} onChange={onChangeFilter} />
@@ -1042,6 +1034,7 @@ function OrdersTable({
               ? createdDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
               : 'Today';
             const isSelected = selectedOrderIds.includes(order.id);
+            const itemQuantity = orderItemQuantity(order);
             return (
               <tr className={isSelected ? 'selected-row' : ''} key={order.id}>
                 {selectable && (
@@ -1057,7 +1050,7 @@ function OrdersTable({
                 <td>
                   <button className="row-title" onClick={() => onOpenDrawer({ type: 'order', data: order })} type="button">
                     #{order.id}
-                    <span>{order.items.length} line item{order.items.length === 1 ? '' : 's'}</span>
+                    <span>{itemQuantity} item{itemQuantity === 1 ? '' : 's'}</span>
                   </button>
                 </td>
                 <td>
@@ -1069,7 +1062,7 @@ function OrdersTable({
                 {!compact && <td>Shipping</td>}
                 <td><Badge tone="success">Paid</Badge></td>
                 <td>{money(order.total_amount)}</td>
-                {!compact && <td>{order.items.length}</td>}
+                {!compact && <td>{itemQuantity}</td>}
                 {!compact && <td>{dateLabel}</td>}
                 <td className="actions">
                   <button className="icon-button" title="View order" onClick={() => onOpenDrawer({ type: 'order', data: order })} type="button"><MoreHorizontal size={16} /></button>
