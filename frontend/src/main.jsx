@@ -7,10 +7,12 @@ import {
   Boxes,
   CheckCircle2,
   ClipboardList,
+  Download,
   Eye,
   Headphones,
   LayoutDashboard,
   Menu,
+  MoreHorizontal,
   PackagePlus,
   Pencil,
   Plus,
@@ -20,6 +22,7 @@ import {
   ShoppingCart,
   SlidersHorizontal,
   Trash2,
+  Upload,
   Users,
   X,
 } from 'lucide-react';
@@ -77,6 +80,20 @@ function stockState(product) {
   return { label: 'In stock', tone: 'success' };
 }
 
+function clamp(value, min = 0, max = 100) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function initials(name = '') {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase() || 'IN';
+}
+
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -93,6 +110,7 @@ function App() {
   const [orderForm, setOrderForm] = useState(emptyOrderForm);
   const [query, setQuery] = useState('');
   const [orderFilter, setOrderFilter] = useState('all');
+  const [selectedOrderIds, setSelectedOrderIds] = useState([]);
   const messageTimer = useRef(null);
 
   const lowStock = useMemo(
@@ -107,6 +125,14 @@ function App() {
 
   const revenue = useMemo(
     () => orders.reduce((total, order) => total + Number(order.total_amount), 0),
+    [orders],
+  );
+
+  const orderedUnits = useMemo(
+    () => orders.reduce(
+      (total, order) => total + order.items.reduce((itemTotal, item) => itemTotal + Number(item.quantity), 0),
+      0,
+    ),
     [orders],
   );
 
@@ -176,6 +202,7 @@ function App() {
       setCustomers(customerData);
       setOrders(orderData);
       setSummary(dashboardData);
+      setSelectedOrderIds((current) => current.filter((id) => orderData.some((order) => order.id === id)));
       if (notifySuccess) {
         flash('success', 'Data refreshed.');
       }
@@ -266,6 +293,33 @@ function App() {
     }
   }
 
+  async function removeSelectedOrders(orderIds) {
+    if (!orderIds.length) return;
+    try {
+      await Promise.all(orderIds.map((id) => request(`/orders/${id}`, { method: 'DELETE' })));
+      setSelectedOrderIds([]);
+      setDrawer(null);
+      flash('success', `${orderIds.length} order${orderIds.length === 1 ? '' : 's'} deleted and stock restored.`);
+      await loadAll();
+    } catch (error) {
+      flash('error', error.message);
+    }
+  }
+
+  function toggleOrderSelection(orderId) {
+    setSelectedOrderIds((current) =>
+      current.includes(orderId) ? current.filter((id) => id !== orderId) : [...current, orderId],
+    );
+  }
+
+  function toggleVisibleOrderSelection(orderIds) {
+    setSelectedOrderIds((current) => {
+      const allSelected = orderIds.length > 0 && orderIds.every((id) => current.includes(id));
+      if (allSelected) return current.filter((id) => !orderIds.includes(id));
+      return Array.from(new Set([...current, ...orderIds]));
+    });
+  }
+
   function editProduct(product) {
     setEditingProductId(product.id);
     setProductForm({
@@ -310,6 +364,7 @@ function App() {
                   inventoryValue={inventoryValue}
                   lowStock={lowStock}
                   orders={orders}
+                  orderedUnits={orderedUnits}
                   products={products}
                   revenue={revenue}
                   summary={summary}
@@ -358,12 +413,16 @@ function App() {
                   orders={filteredOrders}
                   products={products}
                   query={query}
+                  selectedOrderIds={selectedOrderIds}
                   onChangeFilter={setOrderFilter}
                   onChangeForm={setOrderForm}
                   onOpenDrawer={setDrawer}
                   onQuery={setQuery}
                   onRemove={(id) => remove(`/orders/${id}`, 'Order deleted and stock restored.')}
+                  onRemoveSelected={removeSelectedOrders}
                   onSubmit={createOrder}
+                  onToggleAllOrders={toggleVisibleOrderSelection}
+                  onToggleOrder={toggleOrderSelection}
                 />
               )}
 
@@ -449,6 +508,16 @@ function Topbar({ pageTitle, loading, onMenu, onRefresh }) {
         <p className="eyebrow">Operations</p>
         <h1>{pageTitle}</h1>
       </div>
+      <div className="topbar-actions">
+        <button className="secondary-button" type="button">
+          <Download size={17} />
+          Import
+        </button>
+        <button className="secondary-button" type="button">
+          <Upload size={17} />
+          Export
+        </button>
+      </div>
       <button className="secondary-button" onClick={onRefresh} disabled={loading} type="button">
         <RefreshCw size={17} />
         Refresh
@@ -470,9 +539,19 @@ function Notice({ onClose, type, text }) {
   );
 }
 
-function DashboardPage({ customers, inventoryValue, lowStock, orders, products, revenue, summary, onOpenDrawer, onNavigate }) {
-  const recentOrders = orders.slice(0, 5);
-  const topProduct = [...products].sort((a, b) => Number(b.quantity_in_stock) - Number(a.quantity_in_stock))[0];
+function DashboardPage({ customers, inventoryValue, lowStock, orderedUnits, orders, products, revenue, summary, onOpenDrawer, onNavigate }) {
+  const recentOrders = orders.slice(0, 8);
+  const topProducts = [...products].sort((a, b) => Number(b.quantity_in_stock) - Number(a.quantity_in_stock)).slice(0, 5);
+  const totalUnits = products.reduce((total, product) => total + Number(product.quantity_in_stock), 0);
+  const receiptTotal = totalUnits + orderedUnits;
+  const receiptPercent = receiptTotal ? clamp((totalUnits / receiptTotal) * 100) : 0;
+  const orderBars = orders.slice(0, 8).map((order, index) => ({
+    label: `#${order.id}`,
+    value: Number(order.total_amount),
+    tone: index % 2 ? 'muted' : 'dark',
+  }));
+  const averageOrder = orders.length ? revenue / orders.length : 0;
+  const averageItems = orders.length ? orderedUnits / orders.length : 0;
 
   return (
     <div className="page-stack">
@@ -484,30 +563,62 @@ function DashboardPage({ customers, inventoryValue, lowStock, orders, products, 
       </section>
 
       <section className="dashboard-grid">
-        <Panel className="span-8" title="Inventory Snapshot" action={<button className="text-button" onClick={() => onNavigate('products')} type="button">View all</button>}>
-          {products.length ? (
-            <div className="inventory-overview">
-              <div>
-                <span className="stat-label">Inventory value</span>
-                <strong>{money(inventoryValue)}</strong>
-              </div>
-              <div>
-                <span className="stat-label">Highest stock</span>
-                <strong>{topProduct?.name || 'No products'}</strong>
-              </div>
-              <div>
-                <span className="stat-label">Low stock SKUs</span>
-                <strong>{lowStock.length}</strong>
-              </div>
+        <Panel
+          className="span-8 chart-panel"
+          title="Orders Activity"
+          action={<button className="text-button" onClick={() => onNavigate('orders')} type="button">View orders</button>}
+        >
+          <div className="chart-summary">
+            <div>
+              <span className="stat-label">Total revenue</span>
+              <strong>{money(revenue)}</strong>
             </div>
-          ) : (
-            <EmptyState title="No inventory yet" text="Add products to start tracking stock value and reorder risk." />
-          )}
+            <div>
+              <span className="stat-label">Average order</span>
+              <strong>{money(averageOrder)}</strong>
+            </div>
+            <div>
+              <span className="stat-label">Inventory value</span>
+              <strong>{money(inventoryValue)}</strong>
+            </div>
+          </div>
+          <BarChart data={orderBars} emptyText="Create orders to populate the revenue chart." />
+        </Panel>
+
+        <Panel className="span-4 analytics-panel" title="Receipt of Goods">
+          <DonutChart value={receiptPercent} center={money(inventoryValue)} helper={`${totalUnits} units`} />
+          <div className="split-stats">
+            <div>
+              <span>Available units</span>
+              <strong>{totalUnits}</strong>
+            </div>
+            <div>
+              <span>Ordered units</span>
+              <strong>{orderedUnits}</strong>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel className="span-4" title="Orders Status">
+          <div className="status-stack">
+            <StatusMetric label="Created orders" value={orders.length} helper="Orders currently in the system" />
+            <StatusMetric label="Units ordered" value={orderedUnits} helper="Total quantity across order items" />
+            <StatusMetric label="Avg. items/order" value={averageItems.toFixed(1)} helper="Based on current orders" />
+          </div>
+        </Panel>
+
+        <Panel className="span-4" title="Overview">
+          <div className="overview-grid">
+            <OverviewStat label="Products" value={products.length} />
+            <OverviewStat label="Customers" value={customers.length} />
+            <OverviewStat label="Orders" value={orders.length} />
+            <OverviewStat label="Low stock" value={lowStock.length} />
+          </div>
         </Panel>
 
         <Panel className="span-4" title="Quick Actions">
           <div className="quick-actions">
-            <button className="primary-button" onClick={() => onNavigate('products')} type="button">
+            <button className="primary-button full" onClick={() => onNavigate('products')} type="button">
               <PackagePlus size={17} />
               Add product
             </button>
@@ -518,14 +629,92 @@ function DashboardPage({ customers, inventoryValue, lowStock, orders, products, 
           </div>
         </Panel>
 
-        <Panel className="span-7" title="Recent Orders">
+        <Panel className="span-8 table-panel" title="Recent Orders">
           <OrdersTable orders={recentOrders} compact onOpenDrawer={onOpenDrawer} />
         </Panel>
 
-        <Panel className="span-5" title="Low Stock Products">
-          <ProductsTable products={lowStock.slice(0, 5)} compact onOpenDrawer={onOpenDrawer} />
+        <Panel className="span-4" title="Top Inventory">
+          <div className="seller-list">
+            {topProducts.length ? topProducts.map((product) => (
+              <button className="seller-row" key={product.id} onClick={() => onOpenDrawer({ type: 'product', data: product })} type="button">
+                <span className="avatar">{initials(product.name)}</span>
+                <span>
+                  <strong>{product.name}</strong>
+                  <small>{product.sku}</small>
+                </span>
+                <b>{product.quantity_in_stock}</b>
+              </button>
+            )) : <EmptyState title="No products found" text="Add products to fill this list." />}
+          </div>
         </Panel>
       </section>
+    </div>
+  );
+}
+
+function BarChart({ data, emptyText }) {
+  const max = Math.max(...data.map((item) => item.value), 0);
+  if (!data.length || !max) return <EmptyState title="No chart data" text={emptyText} />;
+
+  return (
+    <div className="bar-chart" aria-label="Order revenue chart">
+      {data.map((item) => (
+        <div className="bar-column" key={item.label}>
+          <span style={{ height: `${clamp((item.value / max) * 100, 8, 100)}%` }} className={item.tone} />
+          <small>{item.label}</small>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DonutChart({ center, helper, value }) {
+  const dash = `${clamp(value)} ${100 - clamp(value)}`;
+  return (
+    <div className="donut-wrap">
+      <svg viewBox="0 0 42 42" className="donut-chart" role="img" aria-label={`${Math.round(value)} percent available`}>
+        <circle className="donut-track" cx="21" cy="21" r="15.915" />
+        <circle className="donut-value" cx="21" cy="21" r="15.915" strokeDasharray={dash} />
+      </svg>
+      <div className="donut-center">
+        <strong>{center}</strong>
+        <span>{helper}</span>
+      </div>
+    </div>
+  );
+}
+
+function ProgressRow({ label, muted = false, value }) {
+  return (
+    <div className="progress-row">
+      <div>
+        <span>{label}</span>
+        <strong>{Math.round(value)}%</strong>
+      </div>
+      <div className="progress-track">
+        <span className={muted ? 'muted' : ''} style={{ width: `${clamp(value)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function StatusMetric({ helper, label, value }) {
+  return (
+    <div className="status-metric">
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+      <small>{helper}</small>
+    </div>
+  );
+}
+
+function OverviewStat({ label, value }) {
+  return (
+    <div>
+      <strong>{value}</strong>
+      <span>{label}</span>
     </div>
   );
 }
@@ -570,7 +759,26 @@ function CustomersPage({ customers, form, query, onChangeForm, onOpenDrawer, onQ
   );
 }
 
-function OrdersPage({ customers, filter, form, orders, products, query, onChangeFilter, onChangeForm, onOpenDrawer, onQuery, onRemove, onSubmit }) {
+function OrdersPage({
+  customers,
+  filter,
+  form,
+  orders,
+  products,
+  query,
+  selectedOrderIds,
+  onChangeFilter,
+  onChangeForm,
+  onOpenDrawer,
+  onQuery,
+  onRemove,
+  onRemoveSelected,
+  onSubmit,
+  onToggleAllOrders,
+  onToggleOrder,
+}) {
+  const selectedVisibleIds = selectedOrderIds.filter((id) => orders.some((order) => order.id === id));
+
   return (
     <div className="page-grid">
       <Panel className="form-panel" title="Create Order">
@@ -581,12 +789,26 @@ function OrdersPage({ customers, filter, form, orders, products, query, onChange
         title="Orders"
         action={
           <div className="table-tools">
+            {selectedVisibleIds.length > 0 && (
+              <button className="danger-button" onClick={() => onRemoveSelected(selectedVisibleIds)} type="button">
+                <Trash2 size={16} />
+                Delete selected ({selectedVisibleIds.length})
+              </button>
+            )}
             <SegmentedControl value={filter} onChange={onChangeFilter} />
             <SearchBox value={query} onChange={onQuery} placeholder="Search orders" />
           </div>
         }
       >
-        <OrdersTable orders={orders} onOpenDrawer={onOpenDrawer} onRemove={onRemove} />
+        <OrdersTable
+          orders={orders}
+          selectable
+          selectedOrderIds={selectedOrderIds}
+          onOpenDrawer={onOpenDrawer}
+          onRemove={onRemove}
+          onToggleAll={onToggleAllOrders}
+          onToggleOrder={onToggleOrder}
+        />
       </Panel>
     </div>
   );
@@ -773,39 +995,89 @@ function CustomersTable({ customers, onOpenDrawer, onRemove }) {
   );
 }
 
-function OrdersTable({ compact = false, orders, onOpenDrawer, onRemove }) {
+function OrdersTable({
+  compact = false,
+  orders,
+  selectable = false,
+  selectedOrderIds = [],
+  onOpenDrawer,
+  onRemove,
+  onToggleAll,
+  onToggleOrder,
+}) {
   if (!orders.length) return <EmptyState title="No orders found" text="Create an order or adjust your filters." />;
+
+  const visibleOrderIds = orders.map((order) => order.id);
+  const allSelected = selectable && visibleOrderIds.every((id) => selectedOrderIds.includes(id));
 
   return (
     <div className="table-scroll">
-      <table>
+      <table className="orders-table">
         <thead>
           <tr>
+            {selectable && (
+              <th aria-label="Selection">
+                <button
+                  className={allSelected ? 'check-cell checked' : 'check-cell'}
+                  onClick={() => onToggleAll(visibleOrderIds)}
+                  type="button"
+                  aria-label={allSelected ? 'Clear selected orders' : 'Select all visible orders'}
+                />
+              </th>
+            )}
             <th>Order</th>
             <th>Customer</th>
+            {!compact && <th>Type</th>}
+            <th>Status</th>
             <th>Total</th>
             {!compact && <th>Items</th>}
+            {!compact && <th>Date</th>}
             <th aria-label="Actions" />
           </tr>
         </thead>
         <tbody>
-          {orders.map((order) => (
-            <tr key={order.id}>
-              <td>
-                <button className="row-title" onClick={() => onOpenDrawer({ type: 'order', data: order })} type="button">
-                  #{order.id}
-                  <span>{order.items.length} line item{order.items.length === 1 ? '' : 's'}</span>
-                </button>
-              </td>
-              <td>{order.customer_name}</td>
-              <td>{money(order.total_amount)}</td>
-              {!compact && <td>{order.items.length}</td>}
-              <td className="actions">
-                <button className="icon-button" title="View order" onClick={() => onOpenDrawer({ type: 'order', data: order })} type="button"><Eye size={16} /></button>
-                {onRemove && <button className="icon-button danger" title="Delete order" onClick={() => onRemove(order.id)} type="button"><Trash2 size={16} /></button>}
-              </td>
-            </tr>
-          ))}
+          {orders.map((order, index) => {
+            const createdDate = order.created_at ? new Date(order.created_at) : null;
+            const dateLabel = createdDate && !Number.isNaN(createdDate.valueOf())
+              ? createdDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+              : 'Today';
+            const isSelected = selectedOrderIds.includes(order.id);
+            return (
+              <tr className={isSelected ? 'selected-row' : ''} key={order.id}>
+                {selectable && (
+                  <td>
+                    <button
+                      className={isSelected ? 'check-cell checked' : 'check-cell'}
+                      onClick={() => onToggleOrder(order.id)}
+                      type="button"
+                      aria-label={isSelected ? `Clear order ${order.id}` : `Select order ${order.id}`}
+                    />
+                  </td>
+                )}
+                <td>
+                  <button className="row-title" onClick={() => onOpenDrawer({ type: 'order', data: order })} type="button">
+                    #{order.id}
+                    <span>{order.items.length} line item{order.items.length === 1 ? '' : 's'}</span>
+                  </button>
+                </td>
+                <td>
+                  <button className="customer-cell" onClick={() => onOpenDrawer({ type: 'order', data: order })} type="button">
+                    <span className="avatar subtle">{initials(order.customer_name)}</span>
+                    <span>{order.customer_name}</span>
+                  </button>
+                </td>
+                {!compact && <td>Shipping</td>}
+                <td><Badge tone="success">Paid</Badge></td>
+                <td>{money(order.total_amount)}</td>
+                {!compact && <td>{order.items.length}</td>}
+                {!compact && <td>{dateLabel}</td>}
+                <td className="actions">
+                  <button className="icon-button" title="View order" onClick={() => onOpenDrawer({ type: 'order', data: order })} type="button"><MoreHorizontal size={16} /></button>
+                  {onRemove && <button className="icon-button danger" title="Delete order" onClick={() => onRemove(order.id)} type="button"><Trash2 size={16} /></button>}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
