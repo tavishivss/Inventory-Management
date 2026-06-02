@@ -220,7 +220,7 @@ h2 {
 .metric-card,
 .panel {
   background: #fff;
-  border-radius: 10px;
+  border-radius: 18px;
   box-shadow: 0 14px 40px rgba(9, 9, 11, 0.08);
 }
 
@@ -332,7 +332,7 @@ h2 {
 
 .inventory-overview > div {
   background: #f4f4f5;
-  border-radius: 8px;
+  border-radius: 14px;
   padding: 16px;
 }
 
@@ -366,7 +366,7 @@ h2 {
 .overview-grid > div,
 .split-stats > div {
   background: #f4f4f5;
-  border-radius: 8px;
+  border-radius: 14px;
   padding: 14px;
 }
 
@@ -479,7 +479,7 @@ h2 {
 
 .status-metric {
   background: #f4f4f5;
-  border-radius: 8px;
+  border-radius: 14px;
   display: grid;
   gap: 6px;
   padding: 13px;
@@ -559,7 +559,7 @@ h2 {
 .seller-row {
   align-items: center;
   background: #f4f4f5;
-  border-radius: 8px;
+  border-radius: 14px;
   color: #09090b;
   display: grid;
   gap: 10px;
@@ -949,7 +949,7 @@ tbody tr td:last-child {
 .loading-state {
   align-items: center;
   border: 1px dashed #cfd8e5;
-  border-radius: 8px;
+  border-radius: 18px;
   color: #667085;
   display: grid;
   justify-items: center;
@@ -1014,7 +1014,7 @@ tbody tr td:last-child {
 .detail-row {
   align-items: center;
   background: #f7f7f8;
-  border-radius: 8px;
+  border-radius: 14px;
   display: flex;
   gap: 14px;
   justify-content: space-between;
@@ -1032,7 +1032,7 @@ tbody tr td:last-child {
 
 .line-items {
   background: #f7f7f8;
-  border-radius: 8px;
+  border-radius: 14px;
   overflow: hidden;
 }
 
