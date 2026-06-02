@@ -38,21 +38,6 @@ Copy the example file before running locally:
 cp .env.example .env
 ```
 
-Important variables:
-
-```text
-POSTGRES_DB=inventory_db
-POSTGRES_USER=inventory
-POSTGRES_PASSWORD=123@123
-POSTGRES_PORT=5432
-BACKEND_PORT=8000
-FRONTEND_PORT=8080
-CORS_ORIGINS=http://localhost:5173,http://localhost:8080
-VITE_API_URL=http://localhost:8000
-```
-
-Change `POSTGRES_PASSWORD` for anything beyond local development.
-
 ## Run with Docker
 
 ```bash
